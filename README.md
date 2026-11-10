@@ -6,7 +6,7 @@ Inkloom AI is an automated brand governance and compliance platform designed to 
 
 ## 🔗 Project Links
 
-- **Live Production App:** [Your Vercel Live URL Here]
+- **Live Production App:** [https://inkloom-ai-eta.vercel.app/queue?utm_source=chatgpt.com]
 - **GitHub Repository:** [https://github.com/gmraarush210-blip/brand-governance-ai](https://github.com/gmraarush210-blip/brand-governance-ai.git)
 
 ---
