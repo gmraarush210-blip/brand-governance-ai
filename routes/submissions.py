@@ -96,7 +96,8 @@ def review_submission(submission_id: int) -> dict:
                 (submission_id, rev["version"], f["issue_type"], f["severity"], f["excerpt"],
                  f["explanation"], f["cited_source"], f["suggested_fix"], f["uncertainty"]),
             )
-        conn.execute("UPDATE submissions SET status='reviewed' WHERE id=?", (submission_id,))
+        # Update status and record the reviewed revision
+        conn.execute("UPDATE submissions SET status='reviewed', reviewed_revision=? WHERE id=?", (rev["version"], submission_id))
         conn.commit()
         return {"id": submission_id, "status": "reviewed", "revision": rev["version"],
                 "findings": _findings(conn, submission_id, rev["version"]), "engine": result.get("engine")}
