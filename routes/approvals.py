@@ -38,8 +38,18 @@ def queue(role: str = "reviewer") -> dict:
     _check_role(role)
     conn = get_conn()
     try:
+        # Retrieve open findings strictly from the latest revision of each submission
         rows = conn.execute(
-            "SELECT id, submission_id, issue_type, severity, state, excerpt FROM findings WHERE state='open'"
+            """
+            SELECT f.id, f.submission_id, f.issue_type, f.severity, f.state, f.excerpt 
+            FROM findings f
+            JOIN (
+                SELECT submission_id, MAX(version) as max_rev 
+                FROM revisions 
+                GROUP BY submission_id
+            ) r ON f.submission_id = r.submission_id AND f.revision = r.max_rev
+            WHERE f.state='open'
+            """
         ).fetchall()
         items = [dict(r) for r in rows]
         if role in {"manager", "reviewer"}:
@@ -85,16 +95,30 @@ def decide(submission_id: int, d: Decision) -> dict:
         raise HTTPException(403, "only a manager or reviewer can record an approval decision")
     conn = get_conn()
     try:
-        if conn.execute("SELECT id FROM submissions WHERE id=?", (submission_id,)).fetchone() is None:
+        sub = conn.execute("SELECT * FROM submissions WHERE id=?", (submission_id,)).fetchone()
+        if sub is None:
             raise HTTPException(404, "submission not found")
+        
+        # Block decisions if already approved
+        if sub["status"] == "approved":
+            raise HTTPException(409, "submission is already approved")
+
+        # Check whether the latest revision has been reviewed
+        latest_rev = conn.execute(
+            "SELECT MAX(version) v FROM revisions WHERE submission_id=?",
+            (submission_id,),
+        ).fetchone()["v"]
+
+        if sub["reviewed_revision"] != latest_rev:
+            raise HTTPException(409, "latest revision has not been reviewed")
+
         if d.decision == "approve":
-            ver = conn.execute("SELECT MAX(version) v FROM revisions WHERE submission_id=?",
-                               (submission_id,)).fetchone()["v"]
             open_high = conn.execute(
                 "SELECT COUNT(*) c FROM findings WHERE submission_id=? AND revision=? AND state='open'"
-                " AND severity IN ('high','critical')", (submission_id, ver)).fetchone()["c"]
+                " AND severity IN ('high','critical')", (submission_id, latest_rev)).fetchone()["c"]
             if open_high:
                 raise HTTPException(409, f"{open_high} high-risk finding(s) still open")
+
         status = {"approve": "approved", "request_changes": "changes_requested", "escalate": "escalated"}[d.decision]
         conn.execute("UPDATE submissions SET status=? WHERE id=?", (status, submission_id))
         conn.execute("INSERT INTO decisions (submission_id, role, decision, note) VALUES (?,?,?,?)",
