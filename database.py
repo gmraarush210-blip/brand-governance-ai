@@ -1,3 +1,4 @@
+
 """
 Persistence layer (SQLite). Owner: Aarush CU
 Tables: submissions, revisions, findings, comments, decisions.
@@ -14,8 +15,10 @@ CREATE TABLE IF NOT EXISTS submissions (
     title TEXT NOT NULL DEFAULT 'Untitled',
     content_type TEXT NOT NULL DEFAULT 'text',
     status TEXT NOT NULL DEFAULT 'draft',
+    reviewed_revision INTEGER DEFAULT NULL,
     created_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
+
 CREATE TABLE IF NOT EXISTS revisions (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     submission_id INTEGER NOT NULL REFERENCES submissions(id),
@@ -24,6 +27,7 @@ CREATE TABLE IF NOT EXISTS revisions (
     note TEXT DEFAULT '',
     created_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
+
 CREATE TABLE IF NOT EXISTS findings (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     submission_id INTEGER NOT NULL REFERENCES submissions(id),
@@ -39,6 +43,7 @@ CREATE TABLE IF NOT EXISTS findings (
     rejection_reason TEXT DEFAULT '',
     resolved_by TEXT DEFAULT ''
 );
+
 CREATE TABLE IF NOT EXISTS comments (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     submission_id INTEGER NOT NULL,
@@ -47,6 +52,7 @@ CREATE TABLE IF NOT EXISTS comments (
     body TEXT NOT NULL,
     created_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
+
 CREATE TABLE IF NOT EXISTS decisions (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     submission_id INTEGER NOT NULL,
@@ -68,6 +74,19 @@ def init_db() -> None:
     conn = get_conn()
     try:
         conn.executescript(SCHEMA)
+
+        # Safely migrate existing databases.
+        columns = {
+            row["name"]
+            for row in conn.execute("PRAGMA table_info(submissions)")
+        }
+
+        if "reviewed_revision" not in columns:
+            conn.execute(
+                "ALTER TABLE submissions ADD COLUMN reviewed_revision INTEGER DEFAULT NULL"
+            )
+
         conn.commit()
     finally:
         conn.close()
+
