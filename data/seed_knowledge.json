@@ -1,0 +1,35 @@
+{
+  "_note": "Fictional demo brand. Role 4 owns the final seed data; the engine only needs this shape.",
+  "guidelines": [
+    {
+      "code": "BRAND_VOICE",
+      "title": "Inkloom Brand Voice Handbook",
+      "version": "3.2",
+      "effective_date": "2026-08-14",
+      "sections": [
+        {"id": "§1.1 Naming", "text": "Always write the brand as 'Inkloom': one word, capital I only. Never 'InkLoom', 'Ink Loom' or 'INKLOOM'."},
+        {"id": "§4.2 Words we avoid", "text": "Avoid hype terms such as 'revolutionary', 'game-changing' or 'disruptive'. Show, don't shout. Describe what the product does in plain, specific language."},
+        {"id": "§4.5 Punctuation and urgency", "text": "Use at most one exclamation mark per piece. Avoid pressure tactics such as 'hurry', 'ASAP' or false deadlines."},
+        {"id": "§6.1 Inclusive language", "text": "Prefer neutral terms: 'everyone' not 'guys', 'workforce' not 'manpower', 'chair' not 'chairman', 'remarkable' not 'crazy' or 'insane'."},
+        {"id": "§7.3 Accessible links and images", "text": "Link text must describe the destination, for example 'Read the pricing guide', never 'click here'. Every image needs alt text. Aim for a reading level of grade 9 or below and keep sentences under 30 words."}
+      ]
+    },
+    {
+      "code": "MARKETING_CLAIMS",
+      "title": "Marketing Claims Policy",
+      "version": "1.4",
+      "effective_date": "2026-05-02",
+      "sections": [
+        {"id": "§2.1 Absolute claims", "text": "Do not promise guaranteed outcomes unless a written warranty applies. Words such as 'guaranteed' or 'always' need legal sign-off."},
+        {"id": "§2.3 Superlatives", "text": "Superlatives (best, #1, 100%) must reference an independent, dated source."},
+        {"id": "§3.2 Offers", "text": "Any 'free' offer must state its terms or link to them within the same view."},
+        {"id": "§4.1 Comparative claims", "text": "Comparisons with named competitors must cite a dated, independently verifiable study. Do not disparage competitors."}
+      ]
+    }
+  ],
+  "facts": [
+    {"key": "PLANNER_PRICE", "title": "Inkloom Planner price", "value": "₹1,499 per year", "version": "2", "effective_date": "2026-09-01", "source_reference": "Pricing sheet, Sept 2026"},
+    {"key": "PLANNER_USERS", "title": "Inkloom active users", "value": "120,000 monthly active users", "version": "1", "effective_date": "2026-10-01", "source_reference": "Q3 2026 analytics report"},
+    {"key": "SUPPORT_HOURS", "title": "Inkloom support hours", "value": "9am to 6pm IST, Monday to Friday", "version": "1", "effective_date": "2026-06-01", "source_reference": "Support handbook"}
+  ]
+}

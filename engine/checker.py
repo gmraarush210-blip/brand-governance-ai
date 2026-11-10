@@ -19,7 +19,11 @@ ABSOLUTE_CLAIMS = [
     r"\bbest in (?:the )?(?:world|class)\b", r"\bnumber one\b",
 ]
 EMAIL = re.compile(r"[\w.+-]+@[\w-]+\.[\w.-]+")
-PHONE = re.compile(r"(?<!\d)\+?\d[\d\s().-]{8,}\d(?!\d)")
+# Matched by shape (Indian mobile, +international, 3-3-4) so dates, prices and long numbers are not flagged.
+PHONE = re.compile(
+    r"(?<![\w.+-])(?:(?:\+91[\s-]?)?[6-9]\d{4}[\s-]?\d{5}"
+    r"|\+\d{1,3}[\s-]?\d{2,4}[\s-]?\d{3,4}[\s-]?\d{3,4}"
+    r"|\(?\d{3}\)?[\s.-]\d{3}[\s.-]\d{4})(?![\w-])")
 
 
 def load_pack(path: Path = PACK_PATH) -> dict:
