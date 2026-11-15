@@ -62,7 +62,7 @@ export default function FindingsView({ submissionId, role, onMissing }) {
     });
   }
 
-  if (!submissionId) return <p>No submission yet. Upload a draft first.</p>;
+  if (!submissionId) return <section className="surface-card empty-state"><h1>No submission selected</h1><p>Upload a draft to run a review against the current brand guidelines.</p><button className="primary-button" onClick={onMissing}>Start a submission</button></section>;
   if (missing) return (
     <div role="alert" className="card">
       <p className="error">Submission #{submissionId} no longer exists on the server.</p>
@@ -78,8 +78,10 @@ export default function FindingsView({ submissionId, role, onMissing }) {
   const draftUnchanged = draft === latest;
 
   return (
-    <section>
-      <h2>{submission.title} <small>(status: {submission.status}, revision {revisions.length})</small></h2>
+    <section className="content-page findings-page">
+      <p className="page-kicker">REVIEW RESULTS</p>
+      <h1>{submission.title}</h1>
+      <p className="page-lede">Status: {submission.status} · Revision {revisions.length}</p>
       {error && <p role="alert" className="error">{error}</p>}
       <div className="findings-grid">
         <div>

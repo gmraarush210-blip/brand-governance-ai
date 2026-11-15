@@ -1,4 +1,4 @@
-export const API = import.meta.env.VITE_API_URL || "http://localhost:8000";
+export const API = import.meta.env.VITE_API_URL ?? "";
 
 async function handle(res) {
   if (!res.ok) {
@@ -17,7 +17,7 @@ async function handle(res) {
 async function request(path, init) {
   let res;
   try { res = await fetch(`${API}${path}`, init); }
-  catch { throw new Error(`Cannot reach the server at ${API}. Is the backend running?`); }
+  catch { throw new Error(`Cannot reach the API${API ? ` at ${API}` : ""}. Is the backend available?`); }
   return handle(res);
 }
 
