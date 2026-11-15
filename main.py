@@ -8,14 +8,17 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from database import init_db
+from database import close_pool, get_pool, init_pool
 from routes import approvals, insights, submissions
 
 
 @asynccontextmanager
 async def lifespan(_app: FastAPI):
-    init_db()
-    yield
+    await init_pool()
+    try:
+        yield
+    finally:
+        await close_pool()
 
 
 app = FastAPI(title="Inkloom Engine API", version="0.1.0", lifespan=lifespan)
@@ -35,5 +38,6 @@ app.include_router(insights.router, prefix="/api/insights", tags=["insights"])
 
 
 @app.get("/api/health")
-def health() -> dict:
+async def health() -> dict:
+    await get_pool().fetchval("SELECT 1")
     return {"status": "ok"}
