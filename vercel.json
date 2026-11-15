@@ -12,8 +12,12 @@
       "dest": "main.py"
     },
     {
+      "src": "/assets/(.*)",
+      "dest": "/dist/assets/$1"
+    },
+    {
       "src": "/(.*)",
-      "dest": "main.py"
+      "dest": "/dist/index.html"
     }
   ]
 }
