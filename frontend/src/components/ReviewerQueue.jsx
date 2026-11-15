@@ -5,18 +5,25 @@ export default function ReviewerQueue({ role, onOpen }) {
   const [items, setItems] = useState([]);
   const [error, setError] = useState("");
 
+  const [loading, setLoading] = useState(true);
+
   useEffect(() => {
-    get(`/api/approvals/queue?role=${role}`)
-      .then((d) => { setItems(d.items || []); setError(""); })
-      .catch((e) => { setItems([]); setError(String(e.message || e)); });
+    let cancelled = false;                 // ignore late responses after unmount / role change
+    setLoading(true);
+    get(`/api/approvals/queue?role=${encodeURIComponent(role)}`)
+      .then((d) => { if (!cancelled) { setItems(d.items || []); setError(""); } })
+      .catch((e) => { if (!cancelled) { setItems([]); setError(String(e.message || e)); } })
+      .finally(() => { if (!cancelled) setLoading(false); });
+    return () => { cancelled = true; };
   }, [role]);
 
   return (
     <section>
       <h2>Review queue ({role})</h2>
       <p>{role === "creator" ? "All open findings." : "Open high-risk findings awaiting an authorised reviewer."}</p>
-      {error && <p role="alert" style={{ color: "crimson" }}>{error}</p>}
-      {items.length === 0 && !error && <p>Nothing waiting.</p>}
+      {error && <p role="alert" className="error">{error}</p>}
+      {loading && <p role="status">Loading...</p>}
+      {!loading && items.length === 0 && !error && <p>Nothing waiting.</p>}
       <ul>
         {items.map((it) => (
           <li key={it.id}>

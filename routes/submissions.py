@@ -5,9 +5,20 @@ Owner: Aarush CU
 from fastapi import APIRouter, File, Form, HTTPException, UploadFile
 
 from database import get_conn
-from inkloom_engine import ExtractionError, extract_pdf_text, run_review
+from engine import ExtractionError, extract_pdf_text, run_review
 
 router = APIRouter()
+
+MAX_PDF_BYTES = 10 * 1024 * 1024   # keep in sync with frontend UploadScreen.jsx
+MAX_CHARS = 200_000
+
+
+def _clean_content(content: str) -> str:
+    if not content.strip():
+        raise HTTPException(422, "content is empty")
+    if len(content) > MAX_CHARS:
+        raise HTTPException(413, f"content too long (max {MAX_CHARS} characters)")
+    return content
 
 
 def _findings(conn, sid: int, revision: int | None = None) -> list[dict]:
@@ -26,8 +37,8 @@ def create_submission(
     title: str = Form("Untitled"),
     content_type: str = Form("text"),
 ) -> dict:
-    if not content.strip():
-        raise HTTPException(422, "content is empty")
+    content = _clean_content(content)
+    title = title.strip()[:120] or "Untitled"
     conn = get_conn()
     try:
         cur = conn.execute("INSERT INTO submissions (title, content_type) VALUES (?, ?)", (title, content_type))
@@ -42,7 +53,13 @@ def create_submission(
 
 @router.post("/upload-pdf")
 async def upload_pdf(file: UploadFile = File(...)) -> dict:
-    data = await file.read()
+    data = await file.read(MAX_PDF_BYTES + 1)
+    if len(data) > MAX_PDF_BYTES:
+        raise HTTPException(413, "PDF is larger than 10 MB")
+    if not data:
+        raise HTTPException(422, "PDF extraction failed: file is empty")
+    if not data.lstrip()[:5] == b"%PDF-":
+        raise HTTPException(422, "PDF extraction failed: not a PDF file")
     try:
         text = extract_pdf_text(data)
     except ExtractionError as e:
@@ -107,6 +124,7 @@ def review_submission(submission_id: int) -> dict:
 @router.post("/{submission_id}/revise")
 def revise_submission(submission_id: int, content: str = Form(...), note: str = Form("")) -> dict:
     """Creator edits the draft. Earlier revisions are preserved."""
+    content = _clean_content(content)
     conn = get_conn()
     try:
         row = conn.execute("SELECT MAX(version) v FROM revisions WHERE submission_id=?", (submission_id,)).fetchone()

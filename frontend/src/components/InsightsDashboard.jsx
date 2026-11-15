@@ -6,7 +6,7 @@ export default function InsightsDashboard() {
   const [error, setError] = useState("");
   useEffect(() => { get("/api/insights").then(setData).catch((e) => setError(String(e.message || e))); }, []);
 
-  if (error) return <p role="alert" style={{ color: "crimson" }}>{error}</p>;
+  if (error) return <p role="alert" className="error">{error}</p>;
   if (!data) return <p>Loading...</p>;
   return (
     <section>

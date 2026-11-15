@@ -2,6 +2,7 @@
 Inkloom Engine backend API. Owner: Aarush CU
 Run: uvicorn main:app --reload     Docs: http://localhost:8000/docs
 """
+import os
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
@@ -21,7 +22,9 @@ app = FastAPI(title="Inkloom Engine API", version="0.1.0", lifespan=lifespan)
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:5173", "http://localhost:3000"],
+    allow_origins=os.getenv(
+        "CORS_ORIGINS", "http://localhost:5173,http://127.0.0.1:5173,http://localhost:3000"
+    ).split(","),
     allow_methods=["*"],
     allow_headers=["*"],
 )

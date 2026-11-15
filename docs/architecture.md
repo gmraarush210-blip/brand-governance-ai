@@ -23,4 +23,5 @@ flowchart LR
 ## Key decisions
 - Evidence-linked over confident: missing evidence = "No source found", never "correct".
 - Rule path works with no AI service; any model use is optional and disclosed.
-- Role checks are enforced server-side (prototype roles are a switcher, not real authentication).
+- Role checks are enforced server-side, but the role is client-supplied: the login screen's demo roles are identities, not authentication.
+- Rule patterns are bounded and excerpts windowed so adversarial input cannot stall the engine (see testing log #5, #6).
