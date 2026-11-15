@@ -6,3 +6,4 @@ pypdf
 pytest
 pytest-cov
 httpx
+sqlalchemy
