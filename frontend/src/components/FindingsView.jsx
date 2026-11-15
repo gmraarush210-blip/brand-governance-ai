@@ -1,63 +1,93 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { get, postForm, postJson } from "../api.js";
 
 const COLORS = { critical: "#b00020", high: "#c62828", medium: "#b26a00", low: "#555", info: "#555" };
 
-export default function FindingsView({ submissionId, role }) {
+export default function FindingsView({ submissionId, role, onMissing }) {
   const [data, setData] = useState(null);
   const [error, setError] = useState("");
   const [draft, setDraft] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [missing, setMissing] = useState(false);
+  const inFlight = useRef(false);
 
-  const load = useCallback(async () => {
+  const load = useCallback(async (resetDraft = true) => {
     if (!submissionId) return;
     try {
       const d = await get(`/api/submissions/${submissionId}`);
-      setData(d);
-      setDraft(d.revisions[d.revisions.length - 1].content);
-    } catch (e) { setError(String(e.message || e)); }
+      setData(d); setMissing(false);
+      if (resetDraft) setDraft(d.revisions[d.revisions.length - 1].content);
+    } catch (e) {
+      const msg = String(e.message || e);
+      if (/not found/i.test(msg)) setMissing(true);   // e.g. database was reset, or stale id after refresh
+      setError(msg);
+    }
   }, [submissionId]);
 
-  useEffect(() => { load(); }, [load]);
+  // Switching submissions must not show the previous one's data or error.
+  useEffect(() => { setData(null); setError(""); setMissing(false); load(true); }, [load]);
 
-  async function act(id, state) {
-    setError("");
+  // Serialises every write so double-clicks cannot fire duplicate requests.
+  async function guarded(fn) {
+    if (inFlight.current) return;
+    inFlight.current = true; setBusy(true); setError("");
+    try { await fn(); } catch (e) { setError(String(e.message || e)); }
+    finally { inFlight.current = false; setBusy(false); }
+  }
+
+  function act(id, state) {
     let reason = "";
-    if (state === "rejected") reason = window.prompt("Reason for rejecting (optional)") || "";
-    try { await postJson(`/api/approvals/findings/${id}`, { state, role, reason }); await load(); }
-    catch (e) { setError(String(e.message || e)); }
+    if (state === "rejected") {
+      const r = window.prompt("Reason for rejecting (optional). Cancel to keep the finding open.");
+      if (r === null) return;                          // Cancel must not reject
+      reason = r;
+    }
+    return guarded(async () => { await postJson(`/api/approvals/findings/${id}`, { state, role, reason }); await load(false); });
   }
 
-  async function decide(decision) {
-    setError("");
-    const note = window.prompt("Note (optional)") || "";
-    try { await postJson(`/api/approvals/submissions/${submissionId}/decision`, { decision, role, note }); await load(); }
-    catch (e) { setError(String(e.message || e)); }
+  function decide(decision) {
+    const note = window.prompt("Note (optional). Cancel to abort.");
+    if (note === null) return;                         // Cancel must not record a decision
+    return guarded(async () => {
+      await postJson(`/api/approvals/submissions/${submissionId}/decision`, { decision, role, note });
+      await load(false);
+    });
   }
 
-  async function revise() {
-    setError("");
-    try {
+  function revise() {
+    return guarded(async () => {
       await postForm(`/api/submissions/${submissionId}/revise`, { content: draft, note: "creator edit" });
       await postForm(`/api/submissions/${submissionId}/review`, {});
       await load();
-    } catch (e) { setError(String(e.message || e)); }
+    });
   }
 
   if (!submissionId) return <p>No submission yet. Upload a draft first.</p>;
-  if (!data) return <p>{error || "Loading..."}</p>;
+  if (missing) return (
+    <div role="alert" className="card">
+      <p className="error">Submission #{submissionId} no longer exists on the server.</p>
+      <button onClick={onMissing}>Back to Upload</button>
+    </div>
+  );
+  if (!data) return error ? <p role="alert" className="error">{error}</p> : <p role="status">Loading...</p>;
 
   const { submission, findings, revisions, decisions, comments } = data;
   const canDecide = role !== "creator";
+  const latest = revisions[revisions.length - 1].content;
+  const draftBlank = !draft.trim();
+  const draftUnchanged = draft === latest;
 
   return (
     <section>
       <h2>{submission.title} <small>(status: {submission.status}, revision {revisions.length})</small></h2>
-      {error && <p role="alert" style={{ color: "crimson" }}>{error}</p>}
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
+      {error && <p role="alert" className="error">{error}</p>}
+      <div className="findings-grid">
         <div>
           <h3>Draft (editable → new revision)</h3>
           <textarea aria-label="Draft text" value={draft} onChange={(e) => setDraft(e.target.value)} rows={14} style={{ width: "100%", padding: 8 }} />
-          <button onClick={revise}>Save as new revision &amp; re-review</button>
+          <button onClick={revise} disabled={busy || draftBlank || draftUnchanged}>Save as new revision &amp; re-review</button>
+          {draftBlank && <small role="alert" className="error"> Draft cannot be empty.</small>}
+          {!draftBlank && draftUnchanged && <small className="muted"> No changes to save.</small>}
           <p style={{ color: "#555" }}>Original text is always preserved in revision history.</p>
         </div>
         <div>
@@ -72,8 +102,8 @@ export default function FindingsView({ submissionId, role }) {
               <p style={{ color: "#555" }}><em>Source:</em> {f.cited_source}</p>
               {f.suggested_fix && <p style={{ color: "#1b6e3a" }}><em>Suggested fix (optional):</em> {f.suggested_fix}</p>}
               <p style={{ color: "#555" }}><em>{f.uncertainty}</em></p>
-              <button onClick={() => act(f.id, "accepted")}>Accept</button>{" "}
-              <button onClick={() => act(f.id, "rejected")}>Reject</button>
+              <button disabled={busy || f.state === "accepted"} onClick={() => act(f.id, "accepted")}>Accept</button>{" "}
+              <button disabled={busy || f.state === "rejected"} onClick={() => act(f.id, "rejected")}>Reject</button>
             </article>
           ))}
         </div>
@@ -82,9 +112,9 @@ export default function FindingsView({ submissionId, role }) {
       {canDecide && (
         <p>
           <strong>Decision ({role}):</strong>{" "}
-          <button onClick={() => decide("approve")}>Approve</button>{" "}
-          <button onClick={() => decide("request_changes")}>Request changes</button>{" "}
-          <button onClick={() => decide("escalate")}>Escalate</button>
+          <button disabled={busy} onClick={() => decide("approve")}>Approve</button>{" "}
+          <button disabled={busy} onClick={() => decide("request_changes")}>Request changes</button>{" "}
+          <button disabled={busy} onClick={() => decide("escalate")}>Escalate</button>
         </p>
       )}
 
