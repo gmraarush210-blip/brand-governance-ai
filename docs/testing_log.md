@@ -56,9 +56,9 @@ Latest result: engine suite **18 passed** (run). API suite has 9 tests, 4 of the
 | Cancel on Reject / decision prompt | Nothing changes |
 | Paste 200k digits | Review returns in well under a second |
 | Edit the draft, click Accept on a finding | Draft edits are kept |
-| Delete `inkloom.db` while on a submission, refresh | "No longer exists" screen |
+| Create a submission, redeploy, then reopen it | Submission remains available from Neon |
 
 ## Known limitations
 - Roles are not real authentication: the server trusts the role the client sends.
 - `backend/main.py` is an unused second app, kept for reference.
-- SQLite is not durable on Vercel serverless; use a hosted database for a real deployment.
+- Persistence uses Neon Postgres; configure `DATABASE_URL` in every Vercel project/environment serving the API.

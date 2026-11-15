@@ -3,7 +3,7 @@
 ```mermaid
 flowchart LR
   UI[React frontend] -- REST/JSON --> API[FastAPI backend]
-  API --> DB[(SQLite: submissions, revisions, findings, comments, decisions)]
+  API --> DB[(Neon Postgres: submissions, revisions, findings, comments, decisions)]
   API --> AD[engine/adapter.py]
   AD -->|auto| EXT[inkloom_engine package]
   AD -->|fallback| CHK[engine/checker.py rules]

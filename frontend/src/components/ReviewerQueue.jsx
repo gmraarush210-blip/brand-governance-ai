@@ -18,20 +18,19 @@ export default function ReviewerQueue({ role, onOpen }) {
   }, [role]);
 
   return (
-    <section>
-      <h2>Review queue ({role})</h2>
-      <p>{role === "creator" ? "All open findings." : "Open high-risk findings awaiting an authorised reviewer."}</p>
-      {error && <p role="alert" className="error">{error}</p>}
-      {loading && <p role="status">Loading...</p>}
-      {!loading && items.length === 0 && !error && <p>Nothing waiting.</p>}
-      <ul>
-        {items.map((it) => (
-          <li key={it.id}>
-            #{it.id} [{it.severity}] {it.issue_type}{" "}
-            <button onClick={() => onOpen(it.submission_id)}>Open submission {it.submission_id}</button>
-          </li>
-        ))}
-      </ul>
+    <section className="content-page">
+      <p className="page-kicker">HUMAN REVIEW</p>
+      <h1>Reviewer queue</h1>
+      <p className="page-lede">{role === "creator" ? "All open findings." : "Open high-risk findings awaiting an authorised reviewer."}</p>
+      {error && <p role="alert" className="error surface-card">{error}</p>}
+      {loading && <p role="status" className="surface-card loading-state">Loading review queue…</p>}
+      {!loading && items.length === 0 && !error && <div className="surface-card empty-state"><span className="empty-icon" aria-hidden="true">✓</span><h2>Nothing waiting</h2><p>New high-risk findings will appear here for human review.</p></div>}
+      {!loading && items.length > 0 && <div className="queue-list">{items.map((it) => (
+        <article className="surface-card queue-item" key={it.id}>
+          <div><span className={`severity-pill severity-${it.severity}`}>{it.severity}</span><strong>{it.issue_type.replaceAll("_", " ")}</strong><p>Submission #{it.submission_id} · Finding #{it.id}</p></div>
+          <button className="secondary-button" onClick={() => onOpen(it.submission_id)}>Review submission <span aria-hidden="true">→</span></button>
+        </article>
+      ))}</div>}
     </section>
   );
 }

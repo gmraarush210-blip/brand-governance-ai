@@ -6,4 +6,5 @@ pypdf
 pytest
 pytest-cov
 httpx
+asyncpg
 sqlalchemy

@@ -2,9 +2,11 @@
 Submission lifecycle: create, upload PDF, review, revise, fetch.
 Owner: Aarush CU
 """
+import asyncio
+
 from fastapi import APIRouter, File, Form, HTTPException, UploadFile
 
-from database import get_conn
+from database import get_pool
 from engine import ExtractionError, extract_pdf_text, run_review
 
 router = APIRouter()
@@ -21,33 +23,43 @@ def _clean_content(content: str) -> str:
     return content
 
 
-def _findings(conn, sid: int, revision: int | None = None) -> list[dict]:
+async def _findings(conn, sid: int, revision: int | None = None) -> list[dict]:
     if revision is None:
-        row = conn.execute("SELECT MAX(version) v FROM revisions WHERE submission_id=?", (sid,)).fetchone()
-        revision = row["v"]
-    rows = conn.execute(
-        "SELECT * FROM findings WHERE submission_id=? AND revision=? ORDER BY id", (sid, revision)
-    ).fetchall()
-    return [dict(r) for r in rows]
+        revision = await conn.fetchval(
+            "SELECT MAX(version) FROM revisions WHERE submission_id = $1", sid
+        )
+    if revision is None:
+        return []
+    rows = await conn.fetch(
+        "SELECT * FROM findings WHERE submission_id = $1 AND revision = $2 ORDER BY id",
+        sid,
+        revision,
+    )
+    return [dict(row) for row in rows]
 
 
 @router.post("")
-def create_submission(
+async def create_submission(
     content: str = Form(...),
     title: str = Form("Untitled"),
     content_type: str = Form("text"),
 ) -> dict:
     content = _clean_content(content)
     title = title.strip()[:120] or "Untitled"
-    conn = get_conn()
-    try:
-        cur = conn.execute("INSERT INTO submissions (title, content_type) VALUES (?, ?)", (title, content_type))
-        sid = cur.lastrowid
-        conn.execute("INSERT INTO revisions (submission_id, version, content, note) VALUES (?,1,?,?)",
-                     (sid, content, "original"))
-        conn.commit()
-    finally:
-        conn.close()
+    async with get_pool().acquire() as conn:
+        async with conn.transaction():
+            submission = await conn.fetchrow(
+                "INSERT INTO submissions (title, content_type) VALUES ($1, $2) RETURNING id",
+                title,
+                content_type,
+            )
+            sid = submission["id"]
+            await conn.execute(
+                "INSERT INTO revisions (submission_id, version, content, note) VALUES ($1, 1, $2, $3)",
+                sid,
+                content,
+                "original",
+            )
     return {"id": sid, "status": "draft", "revision": 1}
 
 
@@ -68,73 +80,124 @@ async def upload_pdf(file: UploadFile = File(...)) -> dict:
 
 
 @router.get("/{submission_id}")
-def get_submission(submission_id: int) -> dict:
-    conn = get_conn()
-    try:
-        sub = conn.execute("SELECT * FROM submissions WHERE id=?", (submission_id,)).fetchone()
+async def get_submission(submission_id: int) -> dict:
+    async with get_pool().acquire() as conn:
+        sub = await conn.fetchrow("SELECT * FROM submissions WHERE id = $1", submission_id)
         if sub is None:
             raise HTTPException(404, "submission not found")
-        revisions = [dict(r) for r in conn.execute(
-            "SELECT * FROM revisions WHERE submission_id=? ORDER BY version", (submission_id,))]
-        comments = [dict(r) for r in conn.execute(
-            "SELECT * FROM comments WHERE submission_id=? ORDER BY id", (submission_id,))]
-        decisions = [dict(r) for r in conn.execute(
-            "SELECT * FROM decisions WHERE submission_id=? ORDER BY id", (submission_id,))]
-        return {
-            "submission": dict(sub),
-            "revisions": revisions,
-            "findings": _findings(conn, submission_id),
-            "comments": comments,
-            "decisions": decisions,
-        }
-    finally:
-        conn.close()
+        revisions = [
+            dict(row)
+            for row in await conn.fetch(
+                "SELECT * FROM revisions WHERE submission_id = $1 ORDER BY version",
+                submission_id,
+            )
+        ]
+        comments = [
+            dict(row)
+            for row in await conn.fetch(
+                "SELECT * FROM comments WHERE submission_id = $1 ORDER BY id",
+                submission_id,
+            )
+        ]
+        decisions = [
+            dict(row)
+            for row in await conn.fetch(
+                "SELECT * FROM decisions WHERE submission_id = $1 ORDER BY id",
+                submission_id,
+            )
+        ]
+        findings = await _findings(conn, submission_id)
+    return {
+        "submission": dict(sub),
+        "revisions": revisions,
+        "findings": findings,
+        "comments": comments,
+        "decisions": decisions,
+    }
 
 
 @router.post("/{submission_id}/review")
-def review_submission(submission_id: int) -> dict:
-    conn = get_conn()
-    try:
-        rev = conn.execute(
-            "SELECT version, content FROM revisions WHERE submission_id=? ORDER BY version DESC LIMIT 1",
-            (submission_id,),
-        ).fetchone()
+async def review_submission(submission_id: int) -> dict:
+    async with get_pool().acquire() as conn:
+        rev = await conn.fetchrow(
+            "SELECT version, content FROM revisions WHERE submission_id = $1 ORDER BY version DESC LIMIT 1",
+            submission_id,
+        )
         if rev is None:
             raise HTTPException(404, "submission not found")
         try:
-            result = run_review(rev["content"])
+            result = await asyncio.to_thread(run_review, rev["content"])
         except Exception as e:  # engine failure must never crash the API
             raise HTTPException(502, f"review engine failed: {e}")
-        conn.execute("DELETE FROM findings WHERE submission_id=? AND revision=?", (submission_id, rev["version"]))
-        for f in result["findings"]:
-            conn.execute(
-                "INSERT INTO findings (submission_id, revision, issue_type, severity, excerpt, explanation,"
-                " cited_source, suggested_fix, uncertainty) VALUES (?,?,?,?,?,?,?,?,?)",
-                (submission_id, rev["version"], f["issue_type"], f["severity"], f["excerpt"],
-                 f["explanation"], f["cited_source"], f["suggested_fix"], f["uncertainty"]),
+
+        async with conn.transaction():
+            await conn.execute(
+                "DELETE FROM findings WHERE submission_id = $1 AND revision = $2",
+                submission_id,
+                rev["version"],
             )
-        conn.execute("UPDATE submissions SET status='reviewed' WHERE id=?", (submission_id,))
-        conn.commit()
-        return {"id": submission_id, "status": "reviewed", "revision": rev["version"],
-                "findings": _findings(conn, submission_id, rev["version"]), "engine": result.get("engine")}
-    finally:
-        conn.close()
+            finding_values = [
+                (
+                    submission_id,
+                    rev["version"],
+                    finding["issue_type"],
+                    finding["severity"],
+                    finding["excerpt"],
+                    finding["explanation"],
+                    finding["cited_source"],
+                    finding["suggested_fix"],
+                    finding["uncertainty"],
+                )
+                for finding in result["findings"]
+            ]
+            if finding_values:
+                await conn.executemany(
+                    "INSERT INTO findings (submission_id, revision, issue_type, severity, excerpt, explanation, "
+                    "cited_source, suggested_fix, uncertainty) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)",
+                    finding_values,
+                )
+            await conn.execute(
+                "UPDATE submissions SET status = 'reviewed' WHERE id = $1",
+                submission_id,
+            )
+        findings = await _findings(conn, submission_id, rev["version"])
+    return {
+        "id": submission_id,
+        "status": "reviewed",
+        "revision": rev["version"],
+        "findings": findings,
+        "engine": result.get("engine"),
+    }
 
 
 @router.post("/{submission_id}/revise")
-def revise_submission(submission_id: int, content: str = Form(...), note: str = Form("")) -> dict:
+async def revise_submission(submission_id: int, content: str = Form(...), note: str = Form("")) -> dict:
     """Creator edits the draft. Earlier revisions are preserved."""
     content = _clean_content(content)
-    conn = get_conn()
-    try:
-        row = conn.execute("SELECT MAX(version) v FROM revisions WHERE submission_id=?", (submission_id,)).fetchone()
-        if row["v"] is None:
-            raise HTTPException(404, "submission not found")
-        version = row["v"] + 1
-        conn.execute("INSERT INTO revisions (submission_id, version, content, note) VALUES (?,?,?,?)",
-                     (submission_id, version, content, note))
-        conn.execute("UPDATE submissions SET status='draft' WHERE id=?", (submission_id,))
-        conn.commit()
-        return {"id": submission_id, "revision": version, "status": "draft"}
-    finally:
-        conn.close()
+    async with get_pool().acquire() as conn:
+        async with conn.transaction():
+            submission = await conn.fetchrow(
+                "SELECT id FROM submissions WHERE id = $1 FOR UPDATE",
+                submission_id,
+            )
+            if submission is None:
+                raise HTTPException(404, "submission not found")
+            version = await conn.fetchval(
+                "SELECT MAX(version) FROM revisions WHERE submission_id = $1",
+                submission_id,
+            )
+            if version is None:
+                raise HTTPException(404, "submission not found")
+            version += 1
+            await conn.execute(
+                "INSERT INTO revisions (submission_id, version, content, note) VALUES ($1, $2, $3, $4)",
+                submission_id,
+                version,
+                content,
+                note,
+            )
+            await conn.execute(
+                "UPDATE submissions SET status = 'draft' WHERE id = $1",
+                submission_id,
+            )
+    return {"id": submission_id, "revision": version, "status": "draft"}

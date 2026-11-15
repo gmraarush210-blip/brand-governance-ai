@@ -62,7 +62,7 @@ client sends, so this is not production authentication.
 | Variable | Default | Purpose |
 |---|---|---|
 | `INKLOOM_ENGINE` | `auto` | `builtin` forces the bundled rule engine |
-| `INKLOOM_DB` | `inkloom.db` | SQLite file path |
+| `DATABASE_URL` | Neon integration | PostgreSQL connection string for persistent storage |
 | `CORS_ORIGINS` | localhost:5173,3000 | Comma-separated allowed browser origins |
 | `VITE_API_URL` (frontend) | `http://localhost:8000` | Where the frontend finds the API |
 
@@ -79,7 +79,7 @@ main.py               FastAPI app (entry point)
 routes/               submissions, approvals, insights endpoints
 engine/               rule checker, PDF extractor, output formatter, adapter
 data/                 fictional brand pack (guidelines + approved facts)
-database.py           SQLite schema and connection
+database.py           Neon Postgres connection pool
 frontend/             React + Vite UI (login, upload, findings, queue, insights)
 tests/                engine and API tests
 docs/                 architecture, privacy, testing log, demo script, AI disclosure
@@ -97,5 +97,5 @@ docs/                 architecture, privacy, testing log, demo script, AI disclo
 
 ## Known limitations
 - Not real authentication (see Roles). Brand data is fictional.
-- SQLite does not persist on Vercel serverless; use a hosted database for a real deployment.
+- `DATABASE_URL` must be configured in each Vercel project and environment that serves the API.
 - Rule-based checks only: they can miss issues and are not legal, factual or accessibility certification.

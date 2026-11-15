@@ -15,8 +15,8 @@ export function loadSession() {
   try {
     const s = JSON.parse(window.localStorage.getItem(KEY) || "null");
     if (s && typeof s.name === "string" && ROLES.includes(s.role)) return s;
-  } catch { /* storage blocked or corrupted: treat as logged out */ }
-  return null;
+  } catch { /* storage blocked or corrupted: use the default demo role */ }
+  return { name: "Priya Nair", role: "creator" };
 }
 
 export function saveSession(session) {
