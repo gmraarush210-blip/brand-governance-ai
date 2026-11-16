@@ -204,4 +204,4 @@ Details in [docs/team_and_contributions.md](docs/team_and_contributions.md).
 
 ## License
 
-Released under the [MIT License](LICENSE). Copyright (c) 2026 Inkloom AI team.
+Released under the [MIT License](LICENSE). Copyright (c) 2026 Code Catalysts.
