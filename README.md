@@ -3,7 +3,7 @@
 Checks marketing copy against a codified brand guideline pack, cites the rule behind every finding, and
 routes risky findings to a human. **Nothing is ever auto-published**: approval only records a human decision.
 
-Live demo: https://inkloom-ai-eta.vercel.app/ · Repo: https://github.com/gmraarush210-blip/brand-governance-ai
+Live demo: https://brand-governance-ai.vercel.app/ · Repo: https://github.com/gmraarush210-blip/brand-governance-ai
 
 ## What it does
 - **Submit** pasted text or a text-based PDF. Every edit is saved as a new revision; the original is kept.
