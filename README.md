@@ -3,7 +3,7 @@
 Checks marketing copy against a codified brand guideline pack, cites the rule behind every finding, and
 routes risky findings to a human. **Nothing is ever auto-published**: approval only records a human decision.
 
-Live demo: https://inkloom-ai-eta.vercel.app/ · Repo: https://github.com/gmraarush210-blip/brand-governance-ai
+Live demo: https://brand-governance-ai.vercel.app/ · Repo: https://github.com/gmraarush210-blip/brand-governance-ai
 
 ## What it does
 - **Submit** pasted text or a text-based PDF. Every edit is saved as a new revision; the original is kept.
@@ -67,10 +67,14 @@ client sends, so this is not production authentication.
 | `VITE_API_URL` (frontend) | `http://localhost:8000` | Where the frontend finds the API |
 
 ## Tests
+The API tests create and delete submissions. Set `TEST_DATABASE_URL` to a **dedicated test database** before running the suite; API tests skip when it is missing and fail if it exactly matches `DATABASE_URL`.
+
 ```bash
 pip install -r requirements.txt
+export TEST_DATABASE_URL="<dedicated test database URL>"
 python -m pytest tests -v
 ```
+
 Manual hostile-input checklist and the bug log are in [`docs/testing_log.md`](docs/testing_log.md).
 
 ## Project layout
