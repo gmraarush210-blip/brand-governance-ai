@@ -1,4 +1,3 @@
-[README-4.md](https://github.com/user-attachments/files/34916386/README-4.md)
 # Inkloom AI
 
 **Catch brand and compliance problems before content goes public, with the exact guideline behind every flag and a human making every approval.**
