@@ -4,7 +4,7 @@
 |---|---|---|
 | AI Review Engine Lead | M Tejas Navada | Retrieval/rules over guidelines and facts; structured cited findings; "no source found" fallback; text/PDF extraction; accessibility checks |
 | Backend and Workflow Lead | Aarush C U | Database; review/approval states; role switcher; revision history; API connecting engine to UI |
-| Frontend and UX Lead | K H Varun | Upload screen; side-by-side findings; reviewer queue; insights dashboard; AI-use disclosure banner; accessible UI |
+| Frontend and UX Lead | Varun K H | Upload screen; side-by-side findings; reviewer queue; insights dashboard; AI-use disclosure banner; accessible UI |
 | Research, Data and Documentation Lead | Karthik R | Interviews/survey; fictional brand pack and sample bad content; report; architecture diagram; demo script/video; AI-tool disclosure |
 
 ## Cross-cutting

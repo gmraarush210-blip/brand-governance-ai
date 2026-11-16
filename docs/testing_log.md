@@ -1,7 +1,7 @@
 # Testing and Reliability Log
 
-Run: `python -m pytest tests -v --cov=engine --cov=routes --cov-branch`
-Latest result: engine suite **18 passed** (run). API suite has 9 tests, 4 of them new hostile-input regressions; **not run in the QA environment** (no FastAPI install available), so run `python -m pytest tests -v` before demo day.
+Run: `python -m pytest tests -v --cov=engine --cov=routes --cov-branch` with `TEST_DATABASE_URL` set to a dedicated test database.
+Latest result: engine suite **18 passed**. API suite has 9 tests, including hostile-input regressions; it requires `TEST_DATABASE_URL` and is skipped if that variable is absent. The fixture refuses the exact configured `DATABASE_URL` to reduce the risk of mutating production data. Run the API suite only against an isolated test database.
 
 ## Covered
 | Area | Test |
