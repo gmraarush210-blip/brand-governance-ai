@@ -44,8 +44,7 @@ Paste a draft or upload a PDF. In seconds you get findings that each show **what
 ## Try it in 60 seconds
 
 1. Open the [live demo](https://brand-governance-ai.vercel.app/) and click **Continue as creator**.
-2. On **Upload**, paste this and press **Submit & review**:
-   Example:
+2. On **Upload**, paste this and press **Submit & review.** Example:
 
    ```
    ACME Sleep Tonic cures insomnia and guarantees a perfect night's rest. It is the best in class, with 100% satisfaction. Founded in 2012.
